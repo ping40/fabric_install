@@ -68,6 +68,7 @@ function generateChannelArtifacts() {
     if [ -d "channel-artifacts" ]; then
       rm -rf channel-artifacts/*
     fi
+    mkdir channel-artifacts
     echo "##########################################################"
     echo "#########  Generating Orderer Genesis block ##############"
     echo "##########################################################"
@@ -191,7 +192,7 @@ function cleanup() {
     echo "##########################################################"
 
     rm -rf crypto-config/
-    rm -rf channel-artifacts/*
+    rm -rf channel-artifacts/
     rm -rf run-orderer/  
     rm -rf run-peer0-org1/
     rm -rf run-peer1-org1/
