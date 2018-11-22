@@ -29,7 +29,7 @@ General:
 
     # TLS: TLS settings for the GRPC server.
     TLS:
-        Enabled: false
+        Enabled: true
         # PrivateKey governs the file location of the private key of the TLS certificate.
         PrivateKey: tls/server.key
         # Certificate governs the file location of the server TLS certificate.

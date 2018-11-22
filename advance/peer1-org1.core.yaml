@@ -199,7 +199,7 @@ peer:
     # not mutual TLS auth. See comments on chaincodeListenAddress for more info
     tls:
         # Require server-side TLS
-        enabled:  false
+        enabled:  true
         # Require client certificates / mutual TLS.
         # Note that clients that are not configured to use a certificate will
         # fail to connect to the peer.

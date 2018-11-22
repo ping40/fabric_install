@@ -6,4 +6,4 @@
 ## 增加功能：
 
 - orderer，peer采用有意义的名称，这个名称是有限制的。validateConfigID 限制（ Contain only ASCII alphanumerics, dots '.', dashes '-')
-
+- 增加tls

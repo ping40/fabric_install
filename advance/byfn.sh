@@ -24,6 +24,9 @@ CHAINCODEVERSION="3.1"
 CURRENTDIR=`pwd`
 echo "CURRENTDIR = $CURRENTDIR"
 
+ORDERER_CA=$CURRENTDIR/crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/msp/tlscacerts/tlsca.ping40.net-cert.pem
+PEER0_ORG1_CA=$CURRENTDIR/crypto-config/peerOrganizations/org1.ping40.net/peers/peer0.org1.ping40.net/tls/ca.crt
+PEER0_ORG2_CA=$CURRENTDIR/crypto-config/peerOrganizations/org2.ping40.net/peers/peer0.org2.ping40.net/tls/ca.crt
 # Print the usage message
 function printHelp() {
     echo "Usage: "
@@ -138,6 +141,7 @@ function disptchFiles() {
     cp orderer run-orderer/
     cp channel-artifacts/mygenesis.block run-orderer/
     cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/msp/ run-orderer/
+    cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/tls/ run-orderer/
     cp orderer.yaml run-orderer/
     
     
@@ -161,6 +165,7 @@ function disptchFile4Peer() {
     cp peer $mydir/
     cp peer$PEER-org$ORG.core.yaml $mydir/core.yaml
     cp -r crypto-config/peerOrganizations/org$ORG.ping40.net/peers/peer$PEER.org$ORG.ping40.net/msp/ $mydir/
+    cp -r crypto-config/peerOrganizations/org$ORG.ping40.net/peers/peer$PEER.org$ORG.ping40.net/tls/ $mydir/
     
     tar -czvf multimachine/$mydir.tar.gz  $mydir/
 }
@@ -171,14 +176,9 @@ function runOrderer() {
     echo "##### 请到 目录run-orderer 下执行 ./orderer start      #####"
     echo "#########################################################"
     
-    return
-    cd $CURRENTDIR/run-orderer/
-    ./orderer start 2>logs.txt &  
-    cd run-orderer
-    tail -f -n 500 logs.txt
 }
 
-function runOrderer() {
+function runPeer() {
     echo
     echo "#################################################################"
     echo "##### 请到目录run-peer0/1-org1/2 下执行 ./peer node start     #####"
@@ -199,6 +199,7 @@ function cleanup() {
     rm -rf run-peer0-org2/
     rm -rf run-peer1-org2/
     rm -rf multimachine/
+    rm -rf log.txt/
     if [ -f "${CHANNEL_NAME}.block" ]; then
       rm -rf ${CHANNEL_NAME}.block
     fi 
@@ -210,7 +211,9 @@ function createChannel() {
     ORG=$2 
 	setGlobals $PEER $ORG
 	set -x
-	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS  ./peer channel create -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx  --logging-level=debug 2>log.txt
+	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS  \
+	./peer channel create -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx  --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	
@@ -227,7 +230,9 @@ function joinChannel() {
 	setGlobals $PEER $ORG
 	
 	set -x
-	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer channel join -b ping40channel.block --logging-level=debug 2>log.txt
+	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+	./peer channel join -b ping40channel.block --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	
@@ -244,7 +249,10 @@ function installChaincode() {
 	setGlobals $PEER $ORG
 	
 	set -x
-	GOPATH=$CURRENTDIR CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode install -n $CHAINCODENAME -v $CHAINCODEVERSION -p chaincode/ --logging-level=debug 2>log.txt
+	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+	GOPATH=$CURRENTDIR \
+	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+	./peer chaincode install -n $CHAINCODENAME -v $CHAINCODEVERSION -p chaincode/ --logging-level=debug 2>log.txt
 	#CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode install -n $CHAINCODENAME -v $CHAINCODEVERSION -p  github.com/hyperledger/fabric/examples/chaincode/go/example02 --logging-level=debug 2>log.txt
 	res=$?
     set +x
@@ -262,7 +270,12 @@ function instantiateChaincode() {
 	setGlobals $PEER $ORG
 	
 	set -x
-	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode instantiate -o orderer.ping40.net:51000 -C $CHANNEL_NAME  -n $CHAINCODENAME -v $CHAINCODEVERSION -c '{"Args":["init","a","100","b","200"]}'  -P "OR ('Org1MSP.member', 'Org2MSP.member')" --logging-level=debug 2>log.txt
+	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+	./peer chaincode instantiate -o orderer.ping40.net:51000 -C $CHANNEL_NAME  -n $CHAINCODENAME -v $CHAINCODEVERSION \
+	--tls \
+	--cafile $ORDERER_CA \
+	-c '{"Args":["init","a","100","b","200"]}'  -P "OR ('Org1MSP.member', 'Org2MSP.member')" --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	
@@ -279,7 +292,12 @@ function invokeChaincode() {
     setGlobals $PEER $ORG
 	
     set -x
-    CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode invoke -o orderer.ping40.net:51000 -C $CHANNEL_NAME -n $CHAINCODENAME  -c '{"Args":["invoke","a","b","10"]}'  >&log.txt
+    CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+    CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+    ./peer chaincode invoke -o orderer.ping40.net:51000 -C $CHANNEL_NAME \
+    --tls \
+	--cafile $ORDERER_CA \
+	-n $CHAINCODENAME  -c '{"Args":["invoke","a","b","10"]}'  >&log.txt
     res=$?
     set +x
     cat log.txt
@@ -294,7 +312,9 @@ function queryChaincode() {
     ORG=$2 
     setGlobals $PEER $ORG
     set -x
-    CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode query -C $CHANNEL_NAME -n $CHAINCODENAME -c '{"Args":["query","a"]}' >&log.txt
+    CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+    CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+    ./peer chaincode query -C $CHANNEL_NAME -n $CHAINCODENAME -c '{"Args":["query","a"]}' >&log.txt
     res=$?
     set +x
     echo
@@ -311,7 +331,9 @@ function updateAnchor() {
 	setGlobals $PEER $ORG
 	
 	set -x
-	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer channel update -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f channel-artifacts/Org${ORG}MSPanchors.tx --logging-level=debug 2>log.txt
+	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+	./peer channel update -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f channel-artifacts/Org${ORG}MSPanchors.tx --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	
@@ -339,7 +361,7 @@ function setGlobals() {
     if [ $ORG -eq 1 ]; then
       echo "02 setGlobals $PEER, $ORG"
       CORE_PEER_LOCALMSPID="Org1MSP"
-      #CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
+      CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG1_CA
       CORE_PEER_MSPCONFIGPATH=$CURRENTDIR/crypto-config/peerOrganizations/org1.ping40.net/users/Admin@org1.ping40.net/msp
       if [ $PEER -eq 0 ]; then
         CORE_PEER_ADDRESS=peer0.org1.ping40.net:51100
@@ -348,7 +370,7 @@ function setGlobals() {
       fi
     elif [ $ORG -eq 2 ]; then
       CORE_PEER_LOCALMSPID="Org2MSP"
-      #CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
+      CORE_PEER_TLS_ROOTCERT_FILE=$PEER0_ORG2_CA
       CORE_PEER_MSPCONFIGPATH=$CURRENTDIR/crypto-config/peerOrganizations/org2.ping40.net/users/Admin@org2.ping40.net/msp
       if [ $PEER -eq 0 ]; then
         CORE_PEER_ADDRESS=peer0.org2.ping40.net:51200
