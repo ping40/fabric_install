@@ -14,3 +14,5 @@ advance/run-peer1-org2/
 advance/multimachine/
 advance/channel-artifacts/
 advance/crypto-config/
+advance/zk-single-kafka-single/
+advance/kafka-cluster/zk-data

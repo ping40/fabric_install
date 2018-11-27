@@ -203,10 +203,12 @@ Orderer: &OrdererDefaults
 
     # Orderer Type: The orderer implementation to start
     # Available types are "solo" and "kafka"
-    OrdererType: solo
+    OrdererType: kafka
 
     Addresses:
-        - orderer.ping40.net:51000
+        - orderer0.ping40.net:51000
+        - orderer1.ping40.net:51001
+        - orderer2.ping40.net:51002
 
     # Batch Timeout: The amount of time to wait before creating a batch
     BatchTimeout: 2s
@@ -226,6 +228,16 @@ Orderer: &OrdererDefaults
         # max bytes will result in a batch larger than preferred max bytes.
         PreferredMaxBytes: 512 KB
 
+    Kafka:
+        # Brokers: A list of Kafka brokers to which the orderer connects. Edit
+        # this list to identify the brokers of the ordering service.
+        # NOTE: Use IP:port notation.
+        Brokers:
+            - kafka0.ping40.net:9092
+            - kafka1.ping40.net:9093
+            - kafka2.ping40.net:9094
+            - kafka3.ping40.net:9095
+             
     # Organizations is the list of orgs which are defined as participants on
     # the orderer side of the network
     Organizations:

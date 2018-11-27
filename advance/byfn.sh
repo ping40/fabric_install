@@ -6,14 +6,23 @@
 # 127.0.0.1 peer1.org1.ping40.net 51110
 # 127.0.0.1 peer0.org2.ping40.net 51200
 # 127.0.0.1 peer1.org2.ping40.net 51210
-# 127.0.0.1    orderer.ping40.net 51000
+# 127.0.0.1    orderer0.ping40.net 51000
+# 127.0.0.1    orderer1.ping40.net 51001
+# 127.0.0.1    orderer2.ping40.net 51002
+# 127.0.0.1    kafka0.ping40.net
+# 127.0.0.1    kafka1.ping40.net
+# 127.0.0.1    kafka2.ping40.net
+# 127.0.0.1    kafka3.ping40.net
+
 
 # five machines
 # 192.168.64.136 peer0.org1.ping40.net 51100
 # 192.168.64.225 peer1.org1.ping40.net 51110
 # 192.168.64.243 peer0.org2.ping40.net 51200
 # 192.168.64.249 peer1.org2.ping40.net 51210
-# 192.168.64.69    orderer.ping40.net 51000
+# 192.168.64.69    orderer0.ping40.net 51000
+# 192.168.64.69    orderer1.ping40.net 51001
+# 192.168.64.69    orderer2.ping40.net 51002
 
 
 MODE=$1
@@ -24,7 +33,7 @@ CHAINCODEVERSION="3.1"
 CURRENTDIR=`pwd`
 echo "CURRENTDIR = $CURRENTDIR"
 
-ORDERER_CA=$CURRENTDIR/crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/msp/tlscacerts/tlsca.ping40.net-cert.pem
+ORDERER_CA=$CURRENTDIR/crypto-config/ordererOrganizations/ping40.net/orderers/orderer0.ping40.net/msp/tlscacerts/tlsca.ping40.net-cert.pem
 PEER0_ORG1_CA=$CURRENTDIR/crypto-config/peerOrganizations/org1.ping40.net/peers/peer0.org1.ping40.net/tls/ca.crt
 PEER0_ORG2_CA=$CURRENTDIR/crypto-config/peerOrganizations/org2.ping40.net/peers/peer0.org2.ping40.net/tls/ca.crt
 # Print the usage message
@@ -136,23 +145,33 @@ function disptchFiles() {
     echo "##########################################################"
 
     cd $CURRENTDIR
-    rm -rf run-orderer
-    mkdir run-orderer
-    cp orderer run-orderer/
-    cp channel-artifacts/mygenesis.block run-orderer/
-    cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/msp/ run-orderer/
-    cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer.ping40.net/tls/ run-orderer/
-    cp orderer.yaml run-orderer/
-    
-    
     mkdir multimachine  
-    tar -czvf multimachine/run-orderer.tar.gz  run-orderer/
-  
+    
+    disptchFile4Orderer 0
+    disptchFile4Orderer 1
+    disptchFile4Orderer 2
+    
     disptchFile4Peer 0 1
     disptchFile4Peer 1 1
     disptchFile4Peer 0 2
     disptchFile4Peer 1 2 
 }
+
+
+function disptchFile4Orderer() {
+    NUM=$1
+    
+    rm -rf run-orderer${NUM}
+    mkdir run-orderer${NUM}
+    cp orderer run-orderer${NUM}/
+    cp channel-artifacts/mygenesis.block run-orderer${NUM}/
+    cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer${NUM}.ping40.net/msp/ run-orderer${NUM}/
+    cp -r crypto-config/ordererOrganizations/ping40.net/orderers/orderer${NUM}.ping40.net/tls/ run-orderer${NUM}/
+    cp orderer${NUM}.yaml run-orderer${NUM}/orderer.yaml
+    
+    tar -czvf multimachine/run-orderer${NUM}.tar.gz  run-orderer${NUM}/
+}
+
 
 function disptchFile4Peer() {
     PEER=$1
@@ -193,7 +212,10 @@ function cleanup() {
 
     rm -rf crypto-config/
     rm -rf channel-artifacts/
-    rm -rf run-orderer/  
+    rm -rf run-orderer0/  
+    rm -rf run-orderer1/  
+    rm -rf run-orderer2/
+      
     rm -rf run-peer0-org1/
     rm -rf run-peer1-org1/
     rm -rf run-peer0-org2/
@@ -202,7 +224,8 @@ function cleanup() {
     rm -rf log.txt/
     if [ -f "${CHANNEL_NAME}.block" ]; then
       rm -rf ${CHANNEL_NAME}.block
-    fi 
+    fi
+        
 }
 
 function createChannel() {
@@ -213,7 +236,7 @@ function createChannel() {
 	set -x
 	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
 	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS  \
-	./peer channel create -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx  --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
+	./peer channel create -o orderer0.ping40.net:51000 -c $CHANNEL_NAME -f ./channel-artifacts/channel.tx  --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	
@@ -253,7 +276,7 @@ function installChaincode() {
 	GOPATH=$CURRENTDIR \
 	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
 	./peer chaincode install -n $CHAINCODENAME -v $CHAINCODEVERSION -p chaincode/ --logging-level=debug 2>log.txt
-	#CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS ./peer chaincode install -n $CHAINCODENAME -v $CHAINCODEVERSION -p  github.com/hyperledger/fabric/examples/chaincode/go/example02 --logging-level=debug 2>log.txt
+
 	res=$?
     set +x
 	
@@ -272,7 +295,7 @@ function instantiateChaincode() {
 	set -x
 	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
 	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-	./peer chaincode instantiate -o orderer.ping40.net:51000 -C $CHANNEL_NAME  -n $CHAINCODENAME -v $CHAINCODEVERSION \
+	./peer chaincode instantiate -o orderer0.ping40.net:51000 -C $CHANNEL_NAME  -n $CHAINCODENAME -v $CHAINCODEVERSION \
 	--tls \
 	--cafile $ORDERER_CA \
 	-c '{"Args":["init","a","100","b","200"]}'  -P "OR ('Org1MSP.member', 'Org2MSP.member')" --logging-level=debug 2>log.txt
@@ -294,7 +317,7 @@ function invokeChaincode() {
     set -x
     CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
     CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-    ./peer chaincode invoke -o orderer.ping40.net:51000 -C $CHANNEL_NAME \
+    ./peer chaincode invoke -o orderer0.ping40.net:51000 -C $CHANNEL_NAME \
     --tls \
 	--cafile $ORDERER_CA \
 	-n $CHAINCODENAME  -c '{"Args":["invoke","a","b","10"]}'  >&log.txt
@@ -333,7 +356,7 @@ function updateAnchor() {
 	set -x
 	CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
 	CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-	./peer channel update -o orderer.ping40.net:51000 -c $CHANNEL_NAME -f channel-artifacts/Org${ORG}MSPanchors.tx --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
+	./peer channel update -o orderer0.ping40.net:51000 -c $CHANNEL_NAME -f channel-artifacts/Org${ORG}MSPanchors.tx --tls true --cafile $ORDERER_CA --logging-level=debug 2>log.txt
 	res=$?
     set +x
 	

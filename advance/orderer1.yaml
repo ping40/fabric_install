@@ -22,10 +22,10 @@ General:
     LedgerType: file
 
     # Listen address: The IP on which to bind to listen.
-    ListenAddress: orderer.ping40.net
+    ListenAddress: orderer1.ping40.net
 
     # Listen port: The port on which to bind to listen.
-    ListenPort: 51000
+    ListenPort: 51001
 
     # TLS: TLS settings for the GRPC server.
     TLS:
@@ -236,7 +236,7 @@ Kafka:
     # Kafka.Version is v0.10.1.0 or higher
     Topic:
         # The number of Kafka brokers across which to replicate the topic
-        ReplicationFactor: 3
+        ReplicationFactor: 2
     # Verbose: Enable logging for interactions with the Kafka cluster.
     Verbose: false
 
@@ -314,8 +314,8 @@ Consensus:
 
     # WALDir specifies the location at which Write Ahead Logs for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
-    WALDir: /var/hyperledger/production/orderer/etcdraft/wal
+    WALDir: etcdraft/wal
 
     # SnapDir specifies the location at which snapshots for etcd/raft are
     # stored. Each channel will have its own subdir named after channel ID.
-    SnapDir: /var/hyperledger/production/orderer/etcdraft/snapshot
+    SnapDir: etcdraft/snapshot
