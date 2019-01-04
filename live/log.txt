@@ -1,0 +1,1 @@
+[34m2019-01-03 14:52:11.018 CST [chaincodeCmd] chaincodeInvokeOrQuery -> INFO 001[0m Chaincode invoke successful. result: status:200 
