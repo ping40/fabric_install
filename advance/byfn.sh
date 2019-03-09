@@ -320,7 +320,7 @@ function invokeChaincode() {
     ./peer chaincode invoke -o orderer0.ping40.net:51000 -C $CHANNEL_NAME \
     --tls \
 	--cafile $ORDERER_CA \
-	-n $CHAINCODENAME  -c '{"Args":["invoke","a","b","10"]}'  >&log.txt
+	-n $CHAINCODENAME  -c '{"Args":["invoke","a","b","1"]}'  >&log.txt
     res=$?
     set +x
     cat log.txt
