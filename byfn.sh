@@ -59,6 +59,8 @@ function generateCerts() {
       echo "Failed to generate certificates..."
       exit 1
     fi
+
+    echo "crypto-config successfully..."
     echo
 }
 
@@ -399,6 +401,8 @@ elif [ "${MODE}" == "joinChannel" ]; then
     joinChannel 1 2
 elif [ "${MODE}" == "generate" ]; then ## Generate Artifacts
     generateCerts
+    generateChannelArtifacts
+elif [ "${MODE}" == "generateChannelArtifacts" ]; then ## Generate Artifacts
     generateChannelArtifacts
 else
     printHelp
